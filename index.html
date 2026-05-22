@@ -1793,16 +1793,18 @@ async function handleFormSubmit(e) {
     successEl.classList.add('flex');
 
   } catch (err) {
-    // ── Real error — restore button, surface message ──
+    // ── Error — restore button ──
     btn.disabled = false;
     icon.innerHTML = '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>';
     label.textContent = 'Odeslat poptávku';
-    var userFacing = err.message && (err.message.includes('fotografi') || err.message.includes('velikost'));
-    errMsg.textContent = userFacing
+    // Always log the real error to the browser console for debugging
+    console.error('[submit-form] error:', err.message);
+    // Show a user-friendly message in the UI
+    var isFileError = err.message && (err.message.includes('fotografi') || err.message.includes('velikost'));
+    errMsg.textContent = isFileError
       ? err.message
       : 'Odeslání se nezdařilo. Zkuste to prosím znovu nebo napište přímo na info@bleskuklid.cz';
     errMsg.classList.remove('hidden');
-    console.error('[submit-form]', err);
   }
 }
 

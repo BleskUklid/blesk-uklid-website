@@ -1,14 +1,16 @@
 // ── Blesk Úklid · Contact-form handler ─────────────────────────────────────
+// Netlify Functions v1 format — guaranteed compatible with all Netlify runtimes.
+//
 // POST /.netlify/functions/submit-form
 // Body: JSON { jmeno, email, telefon, mesto, sluzba, zprava, attachments[] }
-// attachments: [{ filename, content (base64), type }]
+// attachments: [{ filename, content (base64 string) }]
 //
 // Required env var:
-//   RESEND_API_KEY   — from resend.com dashboard
+//   RESEND_API_KEY   — from resend.com/api-keys
 //
 // Optional env var:
-//   RESEND_FROM      — verified sender address
-//                      default: "BLESK ÚKLID Web <noreply@bleskuklid.cz>"
+//   RESEND_FROM      — verified sender, e.g. "BLESK ÚKLID Web <noreply@bleskuklid.cz>"
+//                      domain MUST be verified at resend.com/domains first
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Resend } from 'resend';
@@ -16,9 +18,7 @@ import { Resend } from 'resend';
 const TO      = 'info@bleskuklid.cz';
 const SUBJECT = 'NOVÁ POPTÁVKA';
 
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── HTML helpers ──────────────────────────────────────────────────────────────
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -29,13 +29,14 @@ function escapeHtml(str) {
 }
 
 function row(label, value) {
-  if (!value?.toString().trim()) return '';
+  const v = String(value ?? '').trim();
+  if (!v) return '';
   return `
       <tr>
         <td style="padding:9px 20px 9px 0;color:#64748b;font-size:13px;white-space:nowrap;
                    vertical-align:top;font-family:Arial,sans-serif;width:110px">${escapeHtml(label)}</td>
         <td style="padding:9px 0;font-size:14px;color:#1e293b;vertical-align:top;
-                   font-family:Arial,sans-serif">${escapeHtml(value)}</td>
+                   font-family:Arial,sans-serif">${escapeHtml(v)}</td>
       </tr>`;
 }
 
@@ -55,13 +56,11 @@ function buildHtml({ jmeno, email, telefon, mesto, sluzba, zprava, attachments, 
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px">
   <tr><td align="center">
     <table cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
-
       <!-- Header -->
       <tr><td style="background:#1d4ed8;border-radius:12px 12px 0 0;padding:24px 32px">
         <p style="margin:0;font-size:22px;font-weight:700;color:#fff">⚡ NOVÁ POPTÁVKA</p>
         <p style="margin:6px 0 0;font-size:13px;color:#bfdbfe">Blesk Úklid · ${timestamp}</p>
       </td></tr>
-
       <!-- Body -->
       <tr><td style="background:#fff;border-radius:0 0 12px 12px;padding:28px 32px;
                      border:1px solid #e2e8f0;border-top:none">
@@ -78,7 +77,6 @@ function buildHtml({ jmeno, email, telefon, mesto, sluzba, zprava, attachments, 
                   white-space:pre-wrap">${escapeHtml(zprava)}</p>
         ${attachNote}
       </td></tr>
-
     </table>
   </td></tr>
 </table>
@@ -86,86 +84,105 @@ function buildHtml({ jmeno, email, telefon, mesto, sluzba, zprava, attachments, 
 </html>`;
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
-export default async (req) => {
-  // Only POST
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405, headers: JSON_HEADERS,
-    });
+// ── Handler (Netlify Functions v1) ────────────────────────────────────────────
+export const handler = async (event) => {
+  const headers = { 'Content-Type': 'application/json' };
+
+  // ── 1. Method guard ───────────────────────────────────────────────────────
+  console.log('[submit-form] method:', event.httpMethod);
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  // Parse body
+  // ── 2. API key guard ──────────────────────────────────────────────────────
+  if (!process.env.RESEND_API_KEY) {
+    console.error('[submit-form] RESEND_API_KEY env var is missing');
+    return {
+      statusCode: 500, headers,
+      body: JSON.stringify({ error: 'Chybí API klíč na serveru (RESEND_API_KEY). Přidejte ho v Netlify → Site configuration → Environment variables a znovu nasaďte.' }),
+    };
+  }
+  console.log('[submit-form] RESEND_API_KEY present, length:', process.env.RESEND_API_KEY.length);
+
+  // ── 3. Parse body ─────────────────────────────────────────────────────────
   let body;
   try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-      status: 400, headers: JSON_HEADERS,
-    });
+    body = JSON.parse(event.body || '{}');
+  } catch (parseErr) {
+    console.error('[submit-form] JSON parse error:', parseErr.message);
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Neplatné tělo požadavku' }) };
   }
 
   const {
-    jmeno   = '',
-    email   = '',
-    telefon = '',
-    mesto   = '',
-    sluzba  = '',
-    zprava  = '',
+    jmeno       = '',
+    email       = '',
+    telefon     = '',
+    mesto       = '',
+    sluzba      = '',
+    zprava      = '',
     attachments = [],
   } = body;
 
-  // ── Server-side validation ────────────────────────────────────────────────
-  if (!jmeno.trim() || !email.trim() || !zprava.trim()) {
-    return new Response(JSON.stringify({ error: 'Chybí povinná pole (jméno, e-mail, zpráva)' }), {
-      status: 400, headers: JSON_HEADERS,
-    });
-  }
+  console.log('[submit-form] fields — jmeno:', !!jmeno.trim(), '| email:', !!email.trim(), '| zprava:', !!zprava.trim(), '| attachments:', attachments.length);
 
+  // ── 4. Validation ─────────────────────────────────────────────────────────
+  if (!jmeno.trim())  return { statusCode: 400, headers, body: JSON.stringify({ error: 'Chybí jméno' }) };
+  if (!email.trim())  return { statusCode: 400, headers, body: JSON.stringify({ error: 'Chybí e-mail' }) };
+  if (!zprava.trim()) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Chybí zpráva' }) };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    return new Response(JSON.stringify({ error: 'Neplatná e-mailová adresa' }), {
-      status: 400, headers: JSON_HEADERS,
-    });
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Neplatná e-mailová adresa' }) };
   }
 
-  // ── Timestamp (Prague timezone) ───────────────────────────────────────────
+  // ── 5. Build email ────────────────────────────────────────────────────────
   const timestamp = new Date().toLocaleString('cs-CZ', {
     timeZone: 'Europe/Prague',
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 
-  // ── Build email ───────────────────────────────────────────────────────────
   const html = buildHtml({ jmeno, email, telefon, mesto, sluzba, zprava, attachments, timestamp });
 
   const resendAttachments = attachments
     .filter(a => a?.filename && a?.content)
     .map(a => ({ filename: a.filename, content: a.content }));
 
-  // ── Send via Resend ───────────────────────────────────────────────────────
+  const from = process.env.RESEND_FROM || 'BLESK ÚKLID Web <noreply@bleskuklid.cz>';
+
+  console.log('[submit-form] sending — from:', from, '| to:', TO, '| attachments:', resendAttachments.length);
+
+  // ── 6. Send via Resend ────────────────────────────────────────────────────
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const from   = process.env.RESEND_FROM || `BLESK ÚKLID Web <noreply@bleskuklid.cz>`;
 
   try {
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from,
-      to:       [TO],
-      reply_to: email.trim(),
-      subject:  SUBJECT,
+      to:          [TO],
+      reply_to:    email.trim(),
+      subject:     SUBJECT,
       html,
       attachments: resendAttachments,
     });
 
-    if (error) throw new Error(error.message ?? JSON.stringify(error));
+    // Resend SDK returns { data, error } — error is non-null on API failure
+    if (error) {
+      console.error('[submit-form] Resend API error:', JSON.stringify(error));
+      // Return the real Resend error message so the browser can display/log it
+      return {
+        statusCode: 502, headers,
+        body: JSON.stringify({ error: error.message || JSON.stringify(error) }),
+      };
+    }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200, headers: JSON_HEADERS,
-    });
+    console.log('[submit-form] email sent OK — Resend id:', data?.id);
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
 
   } catch (err) {
-    console.error('[submit-form] Resend error:', err?.message ?? err);
-    return new Response(JSON.stringify({ ok: false, error: 'Odesílání e-mailu selhalo' }), {
-      status: 500, headers: JSON_HEADERS,
-    });
+    // Network-level or unexpected errors (not Resend API errors)
+    console.error('[submit-form] unexpected error:', err?.message);
+    console.error('[submit-form] stack:', err?.stack);
+    return {
+      statusCode: 500, headers,
+      body: JSON.stringify({ error: err?.message || 'Neznámá chyba' }),
+    };
   }
 };
