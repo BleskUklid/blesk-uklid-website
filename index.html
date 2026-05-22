@@ -1155,28 +1155,12 @@
 
       <!-- Form -->
       <div class="reveal reveal-delay-2 bg-white rounded-3xl border border-slate-100 p-8" style="box-shadow:0 8px 40px rgba(0,0,0,.06)">
-        <!--
-          NETLIFY FORMS — how it works:
-          • Netlify detects this form at deploy time via data-netlify="true" + name="poptavka"
-          • Every submission is stored in Netlify Dashboard → Forms
-          • Email notifications: Dashboard → Forms → poptavka → Enable email notifications
-            Set subject to: NOVÁ POPTÁVKA
-          • Files (fotografie) are stored and linked in each submission
-          • No activation step needed — works immediately after first deploy
-        -->
+        <!-- Form → /.netlify/functions/submit-form → Resend → info@bleskuklid.cz -->
         <form id="contact-form"
-              name="poptavka"
-              method="POST"
-              enctype="multipart/form-data"
-              data-netlify="true"
-              netlify-honeypot="bot-field"
               onsubmit="handleFormSubmit(event)"
               novalidate>
 
-          <!-- Required by Netlify AJAX submissions -->
-          <input type="hidden" name="form-name" value="poptavka">
-
-          <!-- Honeypot — Netlify rejects any submission where bot-field is filled -->
+          <!-- Honeypot — if bot-field is filled the JS silently drops the submission -->
           <p style="display:none" aria-hidden="true">
             <input name="bot-field" tabindex="-1" autocomplete="off">
           </p>
@@ -1707,19 +1691,52 @@ window.addEventListener('scroll', () => {
   }
 })();
 
-// ── Contact form → Netlify Forms AJAX ───────────────────────────
-// Posts to "/" — Netlify intercepts on the server before the page responds.
-// FormData body handles all fields + file uploads (multipart/form-data).
-// Do NOT set Content-Type manually — the browser sets it with the correct
-// multipart boundary when body is a FormData object.
-// Success: res.ok (HTTP 200). No JSON parsing needed.
+// ── Contact form → /.netlify/functions/submit-form → Resend ─────────────────
+// Collects form fields as JSON. Images are compressed in-browser via Canvas
+// then base64-encoded and sent as Resend email attachments.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Compress an image File to JPEG ≤1200 px wide, quality 0.82. */
+function compressImage(file) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      var MAX = 1200;
+      var w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        if (!blob) { reject(new Error('canvas toBlob failed')); return; }
+        var reader = new FileReader();
+        reader.onload  = function() {
+          // reader.result: "data:image/jpeg;base64,<data>"
+          var b64 = reader.result.split(',')[1];
+          resolve({ filename: file.name.replace(/\.[^.]+$/, '.jpg'), content: b64 });
+        };
+        reader.onerror = function() { reject(new Error('FileReader failed')); };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.src = url;
+  });
+}
+
 async function handleFormSubmit(e) {
   e.preventDefault();
-  const form   = e.target;
-  const btn    = document.getElementById('submit-btn');
-  const icon   = document.getElementById('submit-icon');
-  const label  = document.getElementById('submit-label');
-  const errMsg = document.getElementById('form-error');
+  var form   = e.target;
+  var btn    = document.getElementById('submit-btn');
+  var icon   = document.getElementById('submit-icon');
+  var label  = document.getElementById('submit-label');
+  var errMsg = document.getElementById('form-error');
+
+  // ── Honeypot check ──
+  var botField = form.querySelector('[name="bot-field"]');
+  if (botField && botField.value) return;
 
   // ── HTML5 validation ──
   if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -1731,31 +1748,61 @@ async function handleFormSubmit(e) {
   errMsg.classList.add('hidden');
 
   try {
-    // FormData automatically includes all named fields + files
-    // form-name hidden field tells Netlify which form this is
-    const data = new FormData(form);
+    // ── Compress + base64-encode uploaded images ──
+    var fileInput   = form.querySelector('input[type="file"]');
+    var attachments = [];
+    if (fileInput && fileInput.files.length > 0) {
+      var files = Array.from(fileInput.files);
+      var totalMB = files.reduce(function(s, f) { return s + f.size; }, 0) / 1048576;
+      if (totalMB > 20) {
+        throw new Error('Celková velikost fotografií je příliš velká. Odeberte některé soubory a zkuste znovu.');
+      }
+      for (var i = 0; i < files.length; i++) {
+        attachments.push(await compressImage(files[i]));
+      }
+    }
 
-    const res = await fetch('/', {
-      method: 'POST',
-      // No Content-Type header — browser sets multipart/form-data + boundary
-      body: data,
+    // ── Collect text fields ──
+    var fd = new FormData(form);
+    var payload = {
+      jmeno:       fd.get('jmeno')   || '',
+      email:       fd.get('email')   || '',
+      telefon:     fd.get('telefon') || '',
+      mesto:       fd.get('mesto')   || '',
+      sluzba:      fd.get('sluzba')  || '',
+      zprava:      fd.get('zprava')  || '',
+      attachments: attachments,
+    };
+
+    // ── POST to Netlify Function ──
+    var res = await fetch('/.netlify/functions/submit-form', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error('Netlify responded with HTTP ' + res.status);
+    var json = {};
+    try { json = await res.json(); } catch (_) {}
+
+    if (!res.ok) throw new Error(json.error || 'HTTP ' + res.status);
 
     // ── Success ──
     form.classList.add('hidden');
-    const successEl = document.getElementById('form-success');
+    var successEl = document.getElementById('form-success');
     successEl.classList.remove('hidden');
     successEl.classList.add('flex');
 
   } catch (err) {
-    // ── Error — restore button, show inline message ──
+    // ── Real error — restore button, surface message ──
     btn.disabled = false;
     icon.innerHTML = '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>';
     label.textContent = 'Odeslat poptávku';
+    var userFacing = err.message && (err.message.includes('fotografi') || err.message.includes('velikost'));
+    errMsg.textContent = userFacing
+      ? err.message
+      : 'Odeslání se nezdařilo. Zkuste to prosím znovu nebo napište přímo na info@bleskuklid.cz';
     errMsg.classList.remove('hidden');
-    console.error('Netlify Forms submission error:', err);
+    console.error('[submit-form]', err);
   }
 }
 

@@ -1,18 +1,24 @@
 # ── Netlify configuration — Blesk Úklid ──────────────────────────────────────
 #
-# Email submissions are handled by FormSubmit.co (formsubmit.co/ajax/...)
-# Subject is hardcoded as "NOVÁ POPTÁVKA" via the _subject hidden field.
-# Sender display name is "BLESK ÚKLID Web" via the _from hidden field.
+# Form submissions: index.html → /.netlify/functions/submit-form → Resend API
 #
-# FIRST DEPLOYMENT STEP:
-#   1. Deploy the site to Netlify.
-#   2. FormSubmit.co will send an activation email to info@bleskuklid.cz.
-#   3. Click the activation link — done. All future submissions deliver immediately.
+# Required env var (set in Netlify Dashboard → Environment Variables):
+#   RESEND_API_KEY   your Resend API key  (re_xxxxxxxxxxxx)
+#
+# Optional env var:
+#   RESEND_FROM      sender address after domain verification
+#                    default: "BLESK ÚKLID Web <noreply@bleskuklid.cz>"
 # ─────────────────────────────────────────────────────────────────────────────
 
 [build]
-  # Static HTML — no build step required.
+  # npm install makes resend available for the Netlify Function bundler.
+  command = "npm install"
   publish = "."
+
+# ── Netlify Functions ─────────────────────────────────────────────────────────
+[functions]
+  # esbuild bundles each function with its npm deps automatically.
+  node_bundler = "esbuild"
 
 # ── Security headers ─────────────────────────────────────────────────────────
 [[headers]]
