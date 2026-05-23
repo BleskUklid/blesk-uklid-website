@@ -11,14 +11,17 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [build]
-  # npm install makes resend available for the Netlify Function bundler.
-  command = "npm install"
+  command = "npm install && cd netlify/functions && npm install"
   publish = "."
+
+[build.environment]
+  # resend v3 requires Node 18+; pin it explicitly.
+  NODE_VERSION = "18"
 
 # ── Netlify Functions ─────────────────────────────────────────────────────────
 [functions]
-  # esbuild bundles each function with its npm deps automatically.
-  node_bundler = "esbuild"
+  directory     = "netlify/functions"
+  node_bundler  = "esbuild"
 
 # ── Security headers ─────────────────────────────────────────────────────────
 [[headers]]
