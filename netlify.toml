@@ -1,6 +1,7 @@
 [build]
-  command = "npm install"
-  publish = "."
+  # Copy only the actual site files into public/ — nothing else goes to Netlify
+  command = "mkdir -p public && cp index.html car-detailing.html myti-oken.html obchodni-podminky.html ochrana-soukromi.html pravidelne-uklidy.html tepovani.html _redirects public/"
+  publish = "public"
 
 [functions]
   directory = "netlify/functions"
@@ -9,7 +10,6 @@
   for = "/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-    X-Frame-Options = "DENY"
 
 [[headers]]
   for = "/*.html"
