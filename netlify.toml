@@ -1,47 +1,11 @@
-# ── Netlify configuration — Blesk Úklid ──────────────────────────────────────
-#
-# Form submissions: index.html → /.netlify/functions/submit-form → Resend API
-#
-# Required env var (set in Netlify Dashboard → Environment Variables):
-#   RESEND_API_KEY   your Resend API key  (re_xxxxxxxxxxxx)
-#
-# Optional env var:
-#   RESEND_FROM      sender address after domain verification
-#                    default: "BLESK ÚKLID Web <noreply@bleskuklid.cz>"
-# ─────────────────────────────────────────────────────────────────────────────
-
 [build]
   command = "npm install"
   publish = "."
 
-[build.environment]
-  # resend v3 requires Node 18+; pin explicitly so Netlify never uses Node 16.
-  NODE_VERSION = "18"
-
-# ── Netlify Functions ─────────────────────────────────────────────────────────
 [functions]
-  directory    = "netlify/functions"
-  # nft (Node File Tracing) traces imports from the project root — correctly
-  # resolves resend from root node_modules without a functions-level package.json.
-  node_bundler = "nft"
+  directory = "netlify/functions"
 
-# ── Security headers ─────────────────────────────────────────────────────────
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options        = "DENY"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy        = "strict-origin-when-cross-origin"
-    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
-
-# ── Cache: HTML — always revalidated ─────────────────────────────────────────
 [[headers]]
   for = "/*.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-
-# ── Cache: assets — long-lived ────────────────────────────────────────────────
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
