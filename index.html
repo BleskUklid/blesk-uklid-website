@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3 2026-05-24 -->
+<!-- LIVE VERSION WORKING -->
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
@@ -1156,14 +1156,9 @@
 
       <!-- Form -->
       <div class="reveal reveal-delay-2 bg-white rounded-3xl border border-slate-100 p-8" style="box-shadow:0 8px 40px rgba(0,0,0,.06)">
-        <!-- Form → /.netlify/functions/submit-form → Resend → info@bleskuklid.cz -->
-        <form id="contact-form"
-              novalidate>
-
-          <!-- Honeypot — if bot-field is filled the JS silently drops the submission -->
-          <p style="display:none" aria-hidden="true">
-            <input name="bot-field" tabindex="-1" autocomplete="off">
-          </p>
+        <form id="contact-form" name="poptavka" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+          <input type="hidden" name="form-name" value="poptavka">
+          <p hidden><input name="bot-field"></p>
 
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -1680,35 +1675,53 @@ window.addEventListener('scroll', () => {
   floatCta.classList.toggle('visible', window.scrollY > 400);
 }, { passive: true });
 
-// ── Contact form — rebuilt from zero (v3) ────────────────────────────────────
+// ── Contact form — Netlify Forms ─────────────────────────────────────────────
 (function() {
-  var form = document.getElementById('contact-form');
-  var cb   = document.getElementById('terms-agree');
-  var btn  = document.getElementById('submit-btn');
+  var form       = document.getElementById('contact-form');
+  var cb         = document.getElementById('terms-agree');
+  var btn        = document.getElementById('submit-btn');
+  var label      = document.getElementById('submit-label');
+  var icon       = document.getElementById('submit-icon');
+  var formError  = document.getElementById('form-error');
+  var formSuccess = document.getElementById('form-success');
 
-  if (!form) { console.error('[FORM] #contact-form not found'); return; }
-  if (!cb)   { console.error('[FORM] #terms-agree not found'); return; }
-  if (!btn)  { console.error('[FORM] #submit-btn not found'); return; }
+  if (!form || !cb || !btn) return;
 
-  // Enable submit only when terms are accepted
+  // Enable submit only when terms checkbox is checked
   cb.addEventListener('change', function() {
     btn.disabled = !cb.checked;
   });
 
-  // ONE submit listener — no globals, no inline onsubmit
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
-    console.log('[FORM] submit fired');
 
-    var res = await fetch('/.netlify/functions/submit-form', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ test: true }),
-    });
+    // Loading state
+    btn.disabled = true;
+    label.textContent = 'Odesíláme…';
+    if (icon) icon.style.display = 'none';
+    if (formError) formError.classList.add('hidden');
 
-    console.log('[FORM] status:', res.status);
-    var text = await res.text();
-    console.log('[FORM] body:', text);
+    try {
+      var res = await fetch('/', {
+        method: 'POST',
+        body: new FormData(form),
+      });
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      // Success — hide form, show confirmation
+      form.style.display = 'none';
+      if (formSuccess) {
+        formSuccess.classList.remove('hidden');
+        formSuccess.style.display = 'flex';
+      }
+    } catch (err) {
+      // Error — show error message, restore button
+      if (formError) formError.classList.remove('hidden');
+      label.textContent = 'Odeslat poptávku';
+      if (icon) icon.style.display = '';
+      btn.disabled = !cb.checked;
+    }
   });
 })();
 
