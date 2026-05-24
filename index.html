@@ -1387,14 +1387,20 @@ window.addEventListener('scroll', updateNavbar, { passive: true });
 
 // ── File upload label update ─────────────────────────────────────
 function updateFileLabel(input) {
-  const label = input.closest('label');
-  const span = label.querySelector('span');
-  if (input.files && input.files.length > 0) {
-    const names = Array.from(input.files).map(f => f.name).join(', ');
-    const display = names.length > 48 ? names.substring(0, 45) + '…' : names;
-    span.innerHTML = '<span style="color:#1d4ed8;font-weight:600">' + input.files.length + ' soubor' + (input.files.length > 1 ? 'y' : '') + ' vybrán' + (input.files.length > 1 ? 'y' : '') + '</span>';
+  var label = input.closest('label');
+  var span  = label.querySelector('span');
+  var n = input.files ? input.files.length : 0;
+  if (n > 0) {
+    var word = n === 1 ? 'fotografie vybrána' : n < 5 ? 'fotografie vybrány' : 'fotografií vybráno';
+    span.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.5" style="display:inline;vertical-align:-2px;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '<span style="color:#1d4ed8;font-weight:600">' + n + ' ' + word + '</span>';
     label.style.borderColor = '#60a5fa';
-    label.style.background = '#eff6ff';
+    label.style.background  = '#eff6ff';
+  } else {
+    span.innerHTML = 'Přetáhněte fotografie nebo <span class="text-brand-600 font-semibold">vyberte ze zařízení</span>';
+    label.style.borderColor = '';
+    label.style.background  = '';
   }
 }
 
@@ -1691,6 +1697,10 @@ window.addEventListener('scroll', () => {
   cb.addEventListener('change', function() {
     btn.disabled = !cb.checked;
   });
+
+  // Show file count when photos are selected
+  var fileInput = form.querySelector('input[name="fotografie"]');
+  if (fileInput) fileInput.addEventListener('change', function() { updateFileLabel(this); });
 
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
