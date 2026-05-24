@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2 2026-05-24 -->
+<!-- v3 2026-05-24 -->
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
@@ -1158,7 +1158,6 @@
       <div class="reveal reveal-delay-2 bg-white rounded-3xl border border-slate-100 p-8" style="box-shadow:0 8px 40px rgba(0,0,0,.06)">
         <!-- Form → /.netlify/functions/submit-form → Resend → info@bleskuklid.cz -->
         <form id="contact-form"
-              onsubmit="handleFormSubmit(event)"
               novalidate>
 
           <!-- Honeypot — if bot-field is filled the JS silently drops the submission -->
@@ -1207,7 +1206,7 @@
             <label class="flex flex-col items-center justify-center gap-2 w-full py-5 px-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-brand-300 hover:bg-brand-50 transition-all duration-200 cursor-pointer" style="min-height:88px">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.75"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span class="text-xs font-medium text-slate-500">Přetáhněte fotografie nebo <span class="text-brand-600 font-semibold">vyberte ze zařízení</span></span>
-              <input type="file" name="fotografie" accept="image/*" multiple class="hidden" onchange="updateFileLabel(this)">
+              <input type="file" name="fotografie" accept="image/*" multiple class="hidden">
             </label>
             <p class="mt-2 text-xs text-slate-400 leading-relaxed">Bez fotografií je cenová nabídka pouze orientační.</p>
           </div>
@@ -1681,33 +1680,37 @@ window.addEventListener('scroll', () => {
   floatCta.classList.toggle('visible', window.scrollY > 400);
 }, { passive: true });
 
-// ── Contact form ─────────────────────────────────────────────────
+// ── Contact form — rebuilt from zero (v3) ────────────────────────────────────
 (function() {
-  var cb = document.getElementById('terms-agree');
-  var btn = document.getElementById('submit-btn');
-  if (cb && btn) {
-    cb.addEventListener('change', function() {
-      btn.disabled = !cb.checked;
-    });
-  }
-})();
+  var form = document.getElementById('contact-form');
+  var cb   = document.getElementById('terms-agree');
+  var btn  = document.getElementById('submit-btn');
 
-// ── Contact form — minimal POST test ─────────────────────────────────────────
+  if (!form) { console.error('[FORM] #contact-form not found'); return; }
+  if (!cb)   { console.error('[FORM] #terms-agree not found'); return; }
+  if (!btn)  { console.error('[FORM] #submit-btn not found'); return; }
 
-async function handleFormSubmit(e) {
-  e.preventDefault();
-  console.log('[FORM] submit fired');
-
-  var res = await fetch('/.netlify/functions/submit-form', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ test: true }),
+  // Enable submit only when terms are accepted
+  cb.addEventListener('change', function() {
+    btn.disabled = !cb.checked;
   });
 
-  console.log('[FORM] status:', res.status);
-  var text = await res.text();
-  console.log('[FORM] body:', text);
-}
+  // ONE submit listener — no globals, no inline onsubmit
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    console.log('[FORM] submit fired');
+
+    var res = await fetch('/.netlify/functions/submit-form', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: true }),
+    });
+
+    console.log('[FORM] status:', res.status);
+    var text = await res.text();
+    console.log('[FORM] body:', text);
+  });
+})();
 
 (function() {
   var dot  = document.getElementById('status-dot');
