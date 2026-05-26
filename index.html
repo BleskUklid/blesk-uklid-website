@@ -1180,11 +1180,11 @@
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label class="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Jméno/Firma *</label>
-              <input type="text" name="jmeno" required placeholder="Jan" class="form-input" autocomplete="given-name" />
+              <input type="text" name="jmeno" required placeholder="Adam/Blesk Úklid" class="form-input" autocomplete="given-name" />
             </div>
             <div>
               <label class="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">E-mail *</label>
-              <input type="email" name="email" required placeholder="jan@email.cz" class="form-input" autocomplete="email" />
+              <input type="email" name="email" required placeholder="Adam@email.cz" class="form-input" autocomplete="email" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4 mb-4">
@@ -1217,10 +1217,10 @@
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Fotografie prostoru</label>
             <label class="flex flex-col items-center justify-center gap-2 w-full py-5 px-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-brand-300 hover:bg-brand-50 transition-all duration-200 cursor-pointer" style="min-height:88px">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.75"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span class="text-xs font-medium text-slate-500">Přetáhněte fotografie nebo <span class="text-brand-600 font-semibold">vyberte ze zařízení</span></span>
+              <span class="text-xs font-medium text-slate-500">Přetáhněte fotografie nebo ji <span class="text-brand-600 font-semibold">vyberte ze zařízení</span></span>
               <input type="file" name="fotografie" accept="image/*" multiple class="hidden">
             </label>
-            <p class="mt-2 text-xs text-slate-400 leading-relaxed">Bez fotografií je nabídka čistě orientační.</p>
+            <p class="mt-2 text-xs text-slate-400 leading-relaxed">Bez přiložených fotografií je nabídka čistě orientační.</p>
           </div>
           <!-- Terms agreement -->
           <label class="terms-checkbox-wrap">
@@ -1229,23 +1229,23 @@
               <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><polyline points="1 4.5 4 7.5 10 1" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
             <span class="terms-label-text">
-              Potvrzuji, že jsem si přečetl/a <a href="obchodni-podminky.html" target="_blank" rel="noopener">obchodní podmínky</a> a bez výjimky s nimi souhlasím.
+              Potvrzuji, že jsem si přečetl/a <a href="obchodni-podminky.html" target="_blank" rel="noopener">obchodní podmínky</a>, rozumím jim a bez výjimky s nimi souhlasím.
             </span>
           </label>
           <button id="submit-btn" type="submit" disabled class="flex items-center justify-center gap-2.5 w-full py-4 rounded-2xl bg-brand-700 text-white font-semibold text-base hover:bg-brand-800 transition-all duration-300 hover:-translate-y-0.5 mb-3" style="box-shadow:0 8px 24px rgba(29,78,216,.3);font-family:inherit">
             <svg id="submit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             <span id="submit-label">Odeslat poptávku</span>
           </button>
-          <p id="form-error" class="hidden text-center text-xs text-red-500 mb-2">Odeslání se nezdařilo. Zkuste to prosím znovu nebo napište přímo na info@bleskuklid.cz</p>
-          <p class="text-center text-xs text-slate-400">Odpovídáme do 24 hodin · Bez závazků · 100% diskrétní</p>
+          <p id="form-error" class="hidden text-center text-xs text-red-500 mb-2">Odeslání se nezdařilo. Zkuste to prosím znovu nebo nám napište na info@bleskuklid.cz</p>
+          <p class="text-center text-xs text-slate-400">Odpovídáme maximálně do 24 hodin · Bez závazků · 100% diskrétní</p>
         </form>
         <div id="form-success" class="hidden flex-col items-center justify-center text-center py-12 gap-5">
           <div class="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
           <div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2">Zpráva odeslána!</h3>
-            <p class="text-slate-500 text-sm leading-relaxed max-w-xs mx-auto">Děkujeme za zájem. Ozveme se vám nejpozději do 24 hodin s Vaší cenovou nabídkou.</p>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Zpráva byla odeslána!</h3>
+            <p class="text-slate-500 text-sm leading-relaxed max-w-xs mx-auto">Děkujeme za Váš zájem. Ozveme se vám nejpozději do 24 hodin s Vaší cenovou nabídkou na míru.</p>
           </div>
         </div>
       </div>
