@@ -1600,7 +1600,15 @@ document.querySelectorAll('.service-card').forEach(function(card) {
 const galleryData = [
   { placeholder: true, desc: 'Profesionální mytí oken a skleněných ploch' },
   { placeholder: true, desc: 'Hloubkové čištění a tepování koberců' },
-  { placeholder: true, desc: 'Kompletní detailing interiéru a exteriéru vozidla' },
+  {
+    beforeImg:    'images/detailing-before.jpg',
+    afterImg:     'images/detailing-after.jpg',
+    beforeLabel:  'Před',
+    afterLabel:   'Po',
+    beforeDetail: 'Interiér před čištěním',
+    afterDetail:  'Po profesionálním detailingu',
+    desc:         'Kompletní detailing interiéru vozidla — koberečky a čalounění jako nové',
+  },
 ];
 
 // ── Slider element refs
